@@ -10,6 +10,7 @@ exports.createPages = ({ graphql, actions }) => {
     const createPosts = new Promise((resolve, reject) => {
         const postTemplate = path.resolve(`./src/templates/post.js`)
         const indexTemplate = path.resolve(`./src/templates/index.js`)
+
         resolve(
             graphql(`
                 {
@@ -117,6 +118,29 @@ exports.createPages = ({ graphql, actions }) => {
                             slug: node.slug,
                         },
                     })
+                })
+
+                // Pagination for tags, e.g., /tag/, /tag/slug/page/2, /tag/slug/page/3
+                paginate({
+                    createPage,
+                    items: items,
+                    itemsPerPage: config.postsPerPage,
+                    // The template for a single page in this case is the same as for the paginated page.
+                    // For posts, we have a single post page, as well as an index page.
+                    component: tagsTemplate,
+                    pathPrefix: ({ pageNumber }) => {
+                        if (pageNumber === 0) {
+                            return `/`
+                        } else {
+                            // This would need to have access to the slug in order to
+                            // create a `/tag/slug/page/1` URL
+                            return `/tag/page`
+                        }
+                    },
+                    // we need to pass the existing slug context, but also use the plugin context limit and skip
+                    // context: {
+                    //     ...this.context, ????
+                    // },
                 })
 
                 return resolve()
