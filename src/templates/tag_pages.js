@@ -56,13 +56,14 @@ Tag.propTypes = {
 export default Tag
 
 export const pageQuery = graphql`
-    query GhostTagQuery($slug: String!) {
-        ghostTag(slug: { eq: $slug }) {
+    query GhostTagPagesQuery($limit: Int!, $skip: Int!) {
+        ghostTag {
             ...GhostTagFields
         }
         allGhostPost(
             sort: { order: DESC, fields: [published_at] },
-            filter: {tags: {elemMatch: {slug: {eq: $slug}}}},
+            limit: $limit,
+            skip: $skip,
         ) {
             edges {
                 node {

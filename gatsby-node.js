@@ -76,6 +76,8 @@ exports.createPages = ({ graphql, actions }) => {
 
     const createTags = new Promise((resolve, reject) => {
         const tagsTemplate = path.resolve(`./src/templates/tag.js`)
+        const tagsPagesTemplate = path.resolve(`./src/templates/tag_pages.js`)
+
         resolve(
             graphql(`
                 {
@@ -102,9 +104,9 @@ exports.createPages = ({ graphql, actions }) => {
                     return resolve()
                 }
 
-                const items = result.data.allGhostTag.edges
+                const tags = result.data.allGhostTag.edges
 
-                _.forEach(items, ({ node }) => {
+                _.forEach(tags, ({ node }) => {
                     // Update the existing URL field to reflect the URL in Gatsby and
                     // not in Ghost. Also needed to link to related posts.
                     node.url = `/tag/${node.slug}/`,
@@ -118,29 +120,50 @@ exports.createPages = ({ graphql, actions }) => {
                             slug: node.slug,
                         },
                     })
-                })
 
-                // Pagination for tags, e.g., /tag/, /tag/slug/page/2, /tag/slug/page/3
-                paginate({
-                    createPage,
-                    items: items,
-                    itemsPerPage: config.postsPerPage,
-                    // The template for a single page in this case is the same as for the paginated page.
-                    // For posts, we have a single post page, as well as an index page.
-                    component: tagsTemplate,
-                    pathPrefix: ({ pageNumber }) => {
-                        if (pageNumber === 0) {
-                            return `/`
-                        } else {
-                            // This would need to have access to the slug in order to
-                            // create a `/tag/slug/page/1` URL
-                            return `/tag/page`
-                        }
-                    },
-                    // we need to pass the existing slug context, but also use the plugin context limit and skip
-                    // context: {
-                    //     ...this.context, ????
-                    // },
+                    resolve(
+                        graphql(`
+                            {
+                                allGhostPost(
+                                    sort: {order: ASC, fields: published_at},
+                                    filter: {
+                                        tags: {elemMatch: {slug: {eq: "${node.slug}"}}},
+                                    }
+                                ) {
+                                    edges {
+                                        node {
+                                            slug
+                                        }
+                                    }
+                                }
+                            }`
+                        ).then((result) => {
+                            if (result.errors) {
+                                return reject(result.errors)
+                            }
+
+                            if (!result.data.allGhostPost) {
+                                return resolve()
+                            }
+                            const posts = result.data.allGhostPost.edges
+
+                            // Pagination for tags, e.g., /tag/, /tag/slug/page/2, /tag/slug/page/3
+                            paginate({
+                                createPage,
+                                items: posts,
+                                itemsPerPage: 2,
+                                component: tagsPagesTemplate,
+                                pathPrefix: ({ pageNumber }) => {
+                                    if (pageNumber === 0) {
+                                        return `/`
+                                    } else {
+                                        return `/tag/${node.slug}/page`
+                                    }
+                                },
+                            })
+                            return resolve()
+                        })
+                    )
                 })
 
                 return resolve()
